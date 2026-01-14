@@ -46,8 +46,8 @@ export default function ApiKeysPage() {
                 setUser(user)
 
                 // Try to load from Supabase first (cloud sync)
-                const { data: settings, error: settingsError } = await supabase
-                    .from('user_settings')
+                const { data: settings, error: settingsError } = await (supabase
+                    .from('user_settings') as any)
                     .select('*')
                     .eq('user_id', user.id)
                     .single()
@@ -97,8 +97,8 @@ export default function ApiKeysPage() {
             const encryptedKeys = await encryptApiKeys(keys, user.id)
 
             // Save to Supabase (upsert)
-            const { error } = await supabase
-                .from('user_settings')
+            const { error } = await (supabase
+                .from('user_settings') as any)
                 .upsert({
                     user_id: user.id,
                     claude_api_key_encrypted: encryptedKeys.claude_encrypted,

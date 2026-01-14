@@ -293,8 +293,8 @@ ${extractedFields.business_objective}`
         setLoading(true)
         try {
             // Create project
-            const { data: project, error: projectError } = await supabase
-                .from('prompt_projects')
+            const { data: project, error: projectError } = await (supabase
+                .from('prompt_projects') as any)
                 .insert({
                     project_name: extractedFields.project_name,
                     use_case_category: extractedFields.use_case_category,
@@ -309,8 +309,8 @@ ${extractedFields.business_objective}`
             if (projectError) throw projectError
 
             // Create component
-            const { error: componentError } = await supabase
-                .from('prompt_components')
+            const { error: componentError } = await (supabase
+                .from('prompt_components') as any)
                 .insert({
                     project_id: project.project_id,
                     version_number: 1,

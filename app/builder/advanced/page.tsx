@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
@@ -31,7 +31,16 @@ const TAB_NAMES = [
   'Advanced'
 ]
 
+// Wrapper component with Suspense for useSearchParams
 export default function AdvancedBuilderPage() {
+  return (
+    <Suspense fallback={<div className={styles.loading}>Loading...</div>}>
+      <AdvancedBuilderContent />
+    </Suspense>
+  )
+}
+
+function AdvancedBuilderContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
@@ -110,41 +119,45 @@ export default function AdvancedBuilderPage() {
       .eq('component_id', componentId)
       .single()
 
-    if (project && component) {
+    // Type assertions for Supabase data
+    const proj = project as any
+    const comp = component as any
+
+    if (proj && comp) {
       setFormData({
-        project_name: project.project_name,
-        use_case_category: project.use_case_category,
-        business_objective: project.business_objective,
-        target_audience: project.target_audience,
-        ai_role: component.ai_role,
-        role_expertise: component.role_expertise,
-        tone_voice: component.tone_voice,
-        business_context: component.business_context,
-        constraints: component.constraints,
-        knowledge_sources: component.knowledge_sources,
-        brand_guidelines: component.brand_guidelines,
-        primary_task: component.primary_task,
-        step_by_step_process: component.step_by_step_process,
-        success_criteria: component.success_criteria,
-        input_format: component.input_format,
-        input_example_1: component.input_example_1,
-        input_example_2: component.input_example_2,
-        input_validation: component.input_validation,
-        output_format: component.output_format,
-        output_structure: component.output_structure,
-        output_length: component.output_length,
-        output_example_good: component.output_example_good,
-        output_example_bad: component.output_example_bad,
-        example_scenario_1: component.example_scenario_1,
-        example_scenario_2: component.example_scenario_2,
-        example_scenario_3: component.example_scenario_3,
-        edge_case_handling: component.edge_case_handling,
-        forbidden_responses: component.forbidden_responses,
-        escalation_triggers: component.escalation_triggers,
-        fallback_response: component.fallback_response,
-        testing_notes: component.testing_notes,
-        iteration_goals: component.iteration_goals,
-        performance_metrics: component.performance_metrics
+        project_name: proj.project_name,
+        use_case_category: proj.use_case_category,
+        business_objective: proj.business_objective,
+        target_audience: proj.target_audience,
+        ai_role: comp.ai_role,
+        role_expertise: comp.role_expertise,
+        tone_voice: comp.tone_voice,
+        business_context: comp.business_context,
+        constraints: comp.constraints,
+        knowledge_sources: comp.knowledge_sources,
+        brand_guidelines: comp.brand_guidelines,
+        primary_task: comp.primary_task,
+        step_by_step_process: comp.step_by_step_process,
+        success_criteria: comp.success_criteria,
+        input_format: comp.input_format,
+        input_example_1: comp.input_example_1,
+        input_example_2: comp.input_example_2,
+        input_validation: comp.input_validation,
+        output_format: comp.output_format,
+        output_structure: comp.output_structure,
+        output_length: comp.output_length,
+        output_example_good: comp.output_example_good,
+        output_example_bad: comp.output_example_bad,
+        example_scenario_1: comp.example_scenario_1,
+        example_scenario_2: comp.example_scenario_2,
+        example_scenario_3: comp.example_scenario_3,
+        edge_case_handling: comp.edge_case_handling,
+        forbidden_responses: comp.forbidden_responses,
+        escalation_triggers: comp.escalation_triggers,
+        fallback_response: comp.fallback_response,
+        testing_notes: comp.testing_notes,
+        iteration_goals: comp.iteration_goals,
+        performance_metrics: comp.performance_metrics
       })
       setIsEditMode(true)
       setEditingComponentId(componentId)
@@ -207,8 +220,8 @@ export default function AdvancedBuilderPage() {
 
     try {
       // 1. Insert into prompt_projects
-      const { data: project, error: projectError } = await supabase
-        .from('prompt_projects')
+      const { data: project, error: projectError } = await (supabase
+        .from('prompt_projects') as any)
         .insert({
           project_name: formData.project_name,
           use_case_category: formData.use_case_category,
@@ -223,8 +236,8 @@ export default function AdvancedBuilderPage() {
       if (projectError) throw projectError
 
       // 2. Insert into prompt_components
-      const { error: componentError } = await supabase
-        .from('prompt_components')
+      const { error: componentError } = await (supabase
+        .from('prompt_components') as any)
         .insert({
           project_id: project.project_id,
           version_number: 1,
@@ -279,18 +292,18 @@ export default function AdvancedBuilderPage() {
 
     try {
       // Get max version number
-      const { data: versions } = await supabase
-        .from('prompt_components')
+      const { data: versions } = await (supabase
+        .from('prompt_components') as any)
         .select('version_number')
         .eq('project_id', selectedProjectId)
         .order('version_number', { ascending: false })
         .limit(1)
 
-      const nextVersion = versions?.[0]?.version_number + 1 || 1
+      const nextVersion = (versions?.[0]?.version_number || 0) + 1
 
       // Insert new component version
-      const { error: componentError } = await supabase
-        .from('prompt_components')
+      const { error: componentError } = await (supabase
+        .from('prompt_components') as any)
         .insert({
           project_id: selectedProjectId,
           version_number: nextVersion,
@@ -328,8 +341,8 @@ export default function AdvancedBuilderPage() {
       if (componentError) throw componentError
 
       // Update last_modified
-      await supabase
-        .from('prompt_projects')
+      await (supabase
+        .from('prompt_projects') as any)
         .update({ last_modified: new Date().toISOString() })
         .eq('project_id', selectedProjectId)
 
@@ -351,8 +364,8 @@ export default function AdvancedBuilderPage() {
 
     try {
       // Update prompt_projects
-      const { error: projectError } = await supabase
-        .from('prompt_projects')
+      const { error: projectError } = await (supabase
+        .from('prompt_projects') as any)
         .update({
           project_name: formData.project_name,
           use_case_category: formData.use_case_category,
@@ -365,8 +378,8 @@ export default function AdvancedBuilderPage() {
       if (projectError) throw projectError
 
       // Update prompt_components
-      const { error: componentError } = await supabase
-        .from('prompt_components')
+      const { error: componentError } = await (supabase
+        .from('prompt_components') as any)
         .update({
           ai_role: formData.ai_role,
           role_expertise: formData.role_expertise,
