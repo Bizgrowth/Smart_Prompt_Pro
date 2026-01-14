@@ -81,14 +81,14 @@ function AdvancedBuilderContent() {
       setUser(user)
 
       // Load user's existing projects for dropdown
-      const { data: projects } = await supabase
-        .from('prompt_projects')
+      const { data: projects } = await (supabase
+        .from('prompt_projects') as any)
         .select('project_id, project_name, use_case_category, last_modified')
         .eq('owner', user.id)
         .order('last_modified', { ascending: false })
 
       if (projects) {
-        setExistingProjects(projects)
+        setExistingProjects(projects as any)
       }
 
       // Check if editing existing project
@@ -107,19 +107,18 @@ function AdvancedBuilderContent() {
 
   // Load project data for editing
   async function loadProjectForEditing(projectId: string, componentId: string) {
-    const { data: project } = await supabase
-      .from('prompt_projects')
+    const { data: project } = await (supabase
+      .from('prompt_projects') as any)
       .select('*')
       .eq('project_id', projectId)
       .single()
 
-    const { data: component } = await supabase
-      .from('prompt_components')
+    const { data: component } = await (supabase
+      .from('prompt_components') as any)
       .select('*')
       .eq('component_id', componentId)
       .single()
 
-    // Type assertions for Supabase data
     const proj = project as any
     const comp = component as any
 
