@@ -308,9 +308,49 @@ CREATE POLICY "Users can update performance tracking for their prompts" ON perfo
 CREATE POLICY "Users can delete performance tracking for their prompts" ON performance_tracking
     FOR DELETE USING (
         EXISTS (
-            SELECT 1 FROM generated_prompts 
+            SELECT 1 FROM generated_prompts
             JOIN prompt_projects ON generated_prompts.project_id = prompt_projects.project_id
-            WHERE generated_prompts.generated_id = performance_tracking.generated_id 
+            WHERE generated_prompts.generated_id = performance_tracking.generated_id
             AND prompt_projects.owner = auth.uid()
         )
     );
+
+-- Table 6: USER_SETTINGS
+-- Stores user preferences and encrypted API keys
+CREATE TABLE IF NOT EXISTS user_settings (
+    setting_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+
+    -- Encrypted API Keys (base64 encoded after encryption)
+    claude_api_key_encrypted TEXT,
+    gemini_api_key_encrypted TEXT,
+    openai_api_key_encrypted TEXT,
+
+    -- User preferences
+    default_llm_provider VARCHAR(20) DEFAULT 'claude' CHECK (default_llm_provider IN ('claude', 'gemini', 'openai')),
+    theme VARCHAR(20) DEFAULT 'dark' CHECK (theme IN ('dark', 'light', 'system')),
+
+    created_date TIMESTAMP DEFAULT NOW(),
+    last_modified TIMESTAMP DEFAULT NOW(),
+
+    CONSTRAINT user_settings_unique UNIQUE (user_id)
+);
+
+-- Index for user_settings
+CREATE INDEX idx_user_settings_user ON user_settings(user_id);
+
+-- Enable RLS for user_settings
+ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+
+-- Policies for user_settings
+CREATE POLICY "Users can view their own settings" ON user_settings
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own settings" ON user_settings
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own settings" ON user_settings
+    FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own settings" ON user_settings
+    FOR DELETE USING (auth.uid() = user_id);

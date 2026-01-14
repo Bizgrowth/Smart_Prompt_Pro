@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { encryptApiKeys, decryptApiKeys } from '@/lib/utils/encryption'
 import Button from '@/components/ui/Button'
 import styles from './settings.module.css'
 
@@ -24,69 +25,122 @@ export default function ApiKeysPage() {
         openai: false,
         gemini: false
     })
+    const [saving, setSaving] = useState(false)
+    const [loading, setLoading] = useState(true)
     const [saved, setSaved] = useState(false)
+    const [syncStatus, setSyncStatus] = useState<'synced' | 'local' | 'error'>('local')
     const router = useRouter()
     const supabase = createClient()
 
     useEffect(() => {
-        const checkUser = async () => {
-            console.log('Checking user authentication...')
+        const loadUserAndKeys = async () => {
+            setLoading(true)
             try {
                 const { data: { user }, error } = await supabase.auth.getUser()
-                console.log('Auth response:', { user, error })
 
                 if (!user) {
-                    console.log('No user found, redirecting to login...')
                     router.push('/auth/login')
                     return
                 }
 
-                console.log('User authenticated:', user.email)
                 setUser(user)
 
-                // Load keys from localStorage
-                const storedKeys = localStorage.getItem('llm_api_keys')
-                console.log('Stored keys:', storedKeys)
-                if (storedKeys) {
-                    try {
-                        setKeys(JSON.parse(storedKeys))
-                    } catch (e) {
-                        console.error('Failed to load API keys', e)
+                // Try to load from Supabase first (cloud sync)
+                const { data: settings, error: settingsError } = await supabase
+                    .from('user_settings')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .single()
+
+                if (settings && !settingsError) {
+                    // Decrypt keys from database
+                    const decryptedKeys = await decryptApiKeys({
+                        claude_encrypted: settings.claude_api_key_encrypted,
+                        gemini_encrypted: settings.gemini_api_key_encrypted,
+                        openai_encrypted: settings.openai_api_key_encrypted
+                    }, user.id)
+
+                    setKeys(decryptedKeys)
+                    setSyncStatus('synced')
+
+                    // Also update localStorage for offline access
+                    localStorage.setItem('llm_api_keys', JSON.stringify(decryptedKeys))
+                } else {
+                    // Fallback to localStorage
+                    const storedKeys = localStorage.getItem('llm_api_keys')
+                    if (storedKeys) {
+                        try {
+                            setKeys(JSON.parse(storedKeys))
+                            setSyncStatus('local')
+                        } catch (e) {
+                            console.error('Failed to parse stored keys', e)
+                        }
                     }
                 }
             } catch (err) {
-                console.error('Error in checkUser:', err)
+                console.error('Error loading user/keys:', err)
+                setSyncStatus('error')
+            } finally {
+                setLoading(false)
             }
         }
 
-        checkUser()
-    }, [router, supabase.auth])
+        loadUserAndKeys()
+    }, [router, supabase])
 
-    const handleSave = () => {
-        console.log('Save button clicked!')
-        console.log('Keys to save:', keys)
+    const handleSave = async () => {
+        if (!user) return
+
+        setSaving(true)
         try {
-            // Save to localStorage (encrypted in production)
-            localStorage.setItem('llm_api_keys', JSON.stringify(keys))
-            console.log('Successfully saved to localStorage')
+            // Encrypt keys
+            const encryptedKeys = await encryptApiKeys(keys, user.id)
 
-            // Show success message
+            // Save to Supabase (upsert)
+            const { error } = await supabase
+                .from('user_settings')
+                .upsert({
+                    user_id: user.id,
+                    claude_api_key_encrypted: encryptedKeys.claude_encrypted,
+                    gemini_api_key_encrypted: encryptedKeys.gemini_encrypted,
+                    openai_api_key_encrypted: encryptedKeys.openai_encrypted,
+                    last_modified: new Date().toISOString()
+                }, {
+                    onConflict: 'user_id'
+                })
+
+            if (error) {
+                console.error('Error saving to Supabase:', error)
+                // Fallback to localStorage only
+                localStorage.setItem('llm_api_keys', JSON.stringify(keys))
+                setSyncStatus('local')
+            } else {
+                // Also save to localStorage for offline access
+                localStorage.setItem('llm_api_keys', JSON.stringify(keys))
+                setSyncStatus('synced')
+            }
+
             setSaved(true)
-            console.log('Success message should now be visible!')
+            setTimeout(() => setSaved(false), 3000)
 
-            // Hide success message after 3 seconds
-            setTimeout(() => {
-                setSaved(false)
-                console.log('Success message hidden')
-            }, 3000)
         } catch (error) {
-            console.error('Error saving to localStorage:', error)
-            alert('Error saving API keys: ' + error)
+            console.error('Error saving API keys:', error)
+            // Fallback to localStorage
+            localStorage.setItem('llm_api_keys', JSON.stringify(keys))
+            setSyncStatus('local')
+            setSaved(true)
+            setTimeout(() => setSaved(false), 3000)
+        } finally {
+            setSaving(false)
         }
     }
 
     const handleClear = (provider: keyof APIKeys) => {
         setKeys(prev => ({ ...prev, [provider]: '' }))
+    }
+
+    if (loading) {
+        return <div className={styles.loading}>Loading...</div>
     }
 
     if (!user) {
@@ -108,8 +162,15 @@ export default function ApiKeysPage() {
                 <div className={styles.content}>
                     <h2 className={styles.title}>API Keys Configuration</h2>
                     <p className={styles.subtitle}>
-                        Store your LLM API keys securely. Keys are stored in your browser only and never sent to our servers.
+                        Store your LLM API keys securely. Keys are encrypted and synced across your devices.
                     </p>
+
+                    {/* Sync Status Indicator */}
+                    <div className={`${styles.syncStatus} ${styles[syncStatus]}`}>
+                        {syncStatus === 'synced' && '☁️ Synced to cloud - available on all your devices'}
+                        {syncStatus === 'local' && '💾 Stored locally - save to sync to cloud'}
+                        {syncStatus === 'error' && '⚠️ Sync error - keys stored locally'}
+                    </div>
 
                     {saved && (
                         <div className={styles.successMessage}>
@@ -256,18 +317,20 @@ export default function ApiKeysPage() {
                             variant="primary"
                             size="lg"
                             onClick={handleSave}
+                            loading={saving}
                             fullWidth
                         >
-                            💾 Save API Keys
+                            {saving ? 'Saving...' : '💾 Save & Sync API Keys'}
                         </Button>
                     </div>
 
                     <div className={styles.infoBox}>
                         <h4>🔒 Security Information</h4>
                         <ul>
-                            <li>API keys are stored in your browser's localStorage only</li>
-                            <li>Keys are never sent to our servers</li>
-                            <li>You can clear keys at any time</li>
+                            <li>API keys are encrypted before being stored in the cloud</li>
+                            <li>Encryption uses your unique user ID as the key</li>
+                            <li>Keys sync automatically across all your devices</li>
+                            <li>Local backup stored in browser for offline access</li>
                             <li>Keep your API keys private - never share them</li>
                         </ul>
                     </div>

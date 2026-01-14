@@ -77,6 +77,34 @@
     animation: slideIn 0.3s ease-out;
 }
 
+/* Sync Status */
+.syncStatus {
+    padding: var(--space-md);
+    border-radius: var(--border-radius-md);
+    text-align: center;
+    margin-bottom: var(--space-xl);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+}
+
+.synced {
+    background: hsla(200, 70%, 50%, 0.1);
+    border: 1px solid hsla(200, 70%, 50%, 0.5);
+    color: hsl(200, 70%, 50%);
+}
+
+.local {
+    background: hsla(45, 70%, 50%, 0.1);
+    border: 1px solid hsla(45, 70%, 50%, 0.5);
+    color: hsl(45, 70%, 45%);
+}
+
+.error {
+    background: hsla(0, 70%, 50%, 0.1);
+    border: 1px solid var(--color-error);
+    color: var(--color-error);
+}
+
 /* Key Cards */
 .keysContainer {
     display: flex;
