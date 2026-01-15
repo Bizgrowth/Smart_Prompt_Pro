@@ -2,11 +2,28 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
     try {
-        const { prompt, apiKey, provider } = await request.json()
+        const { prompt, apiKey: userApiKey, provider } = await request.json()
 
-        if (!prompt || !apiKey || !provider) {
+        if (!prompt || !provider) {
             return NextResponse.json(
                 { error: 'Missing required fields' },
+                { status: 400 }
+            )
+        }
+
+        // Use user's API key if provided, otherwise fall back to server env vars
+        let apiKey = userApiKey
+        if (!apiKey) {
+            if (provider === 'claude') {
+                apiKey = process.env.CLAUDE_API_KEY
+            } else if (provider === 'gemini') {
+                apiKey = process.env.GEMINI_API_KEY
+            }
+        }
+
+        if (!apiKey) {
+            return NextResponse.json(
+                { error: `No API key available for ${provider}. Please configure in Settings or contact admin.` },
                 { status: 400 }
             )
         }

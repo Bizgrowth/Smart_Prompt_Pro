@@ -5,7 +5,7 @@ export const runtime = 'nodejs'
 export async function POST(request: NextRequest) {
     console.log('API Route Hit: /api/analyze-prompt')
     try {
-        const { description, apiKey, provider = 'claude' } = await request.json()
+        const { description, apiKey: userApiKey, provider = 'claude' } = await request.json()
         console.log('Request data:', { description: description?.substring(0, 50), provider })
 
         if (!description) {
@@ -16,10 +16,20 @@ export async function POST(request: NextRequest) {
             )
         }
 
+        // Use user's API key if provided, otherwise fall back to server env vars
+        let apiKey = userApiKey
         if (!apiKey) {
-            console.log('Error: No API key provided')
+            if (provider === 'claude') {
+                apiKey = process.env.CLAUDE_API_KEY
+            } else if (provider === 'gemini') {
+                apiKey = process.env.GEMINI_API_KEY
+            }
+        }
+
+        if (!apiKey) {
+            console.log('Error: No API key available')
             return NextResponse.json(
-                { error: 'API key is required' },
+                { error: `No API key available for ${provider}. Please configure in Settings or contact admin.` },
                 { status: 400 }
             )
         }
