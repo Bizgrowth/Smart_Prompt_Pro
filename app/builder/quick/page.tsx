@@ -50,24 +50,7 @@ export default function QuickModePage() {
         setError(null)
 
         try {
-            // Get API keys from localStorage
-            const keysStr = localStorage.getItem('llm_api_keys')
-            if (!keysStr) {
-                setError('Please configure your API keys in Settings first')
-                setLoading(false)
-                return
-            }
-
-            const keys = JSON.parse(keysStr)
-            const apiKey = selectedModel === 'claude' ? keys.claude : keys.gemini
-
-            if (!apiKey) {
-                setError(`Please add your ${selectedModel === 'claude' ? 'Claude' : 'Google Gemini'} API key in Settings`)
-                setLoading(false)
-                return
-            }
-
-            // Call our API route (server-side) to avoid CORS
+            // Call our API route (server-side) - uses server env vars for API keys
             const response = await fetch('/api/analyze-prompt', {
                 method: 'POST',
                 headers: {
@@ -75,7 +58,6 @@ export default function QuickModePage() {
                 },
                 body: JSON.stringify({
                     description,
-                    apiKey,
                     provider: selectedModel
                 })
             })
@@ -162,29 +144,13 @@ ${extractedFields.business_objective}`
         setError(null)
 
         try {
-            const keysStr = localStorage.getItem('llm_api_keys')
-            if (!keysStr) {
-                setError('Please configure your API keys in Settings first')
-                setLoading(false)
-                return
-            }
-
-            const keys = JSON.parse(keysStr)
-            const apiKey = selectedModel === 'claude' ? keys.claude : keys.gemini
-
-            if (!apiKey) {
-                setError(`Please add your ${selectedModel === 'claude' ? 'Claude' : 'Google Gemini'} API key in Settings`)
-                setLoading(false)
-                return
-            }
-
             // Initialize conversation with system prompt
             const initialMessage: ConversationMessage = {
                 role: 'user',
                 content: `Here is a system prompt that defines your role and task. Please acknowledge that you understand the instructions and are ready to help:\n\n${generatedPrompt}`
             }
 
-            // Call API to execute prompt with LLM
+            // Call API to execute prompt with LLM - uses server env vars for API keys
             const response = await fetch('/api/execute-prompt', {
                 method: 'POST',
                 headers: {
@@ -192,7 +158,6 @@ ${extractedFields.business_objective}`
                 },
                 body: JSON.stringify({
                     prompt: generatedPrompt,
-                    apiKey,
                     provider: selectedModel
                 })
             })
@@ -227,22 +192,6 @@ ${extractedFields.business_objective}`
         setError(null)
 
         try {
-            const keysStr = localStorage.getItem('llm_api_keys')
-            if (!keysStr) {
-                setError('Please configure your API keys in Settings first')
-                setLoading(false)
-                return
-            }
-
-            const keys = JSON.parse(keysStr)
-            const apiKey = selectedModel === 'claude' ? keys.claude : keys.gemini
-
-            if (!apiKey) {
-                setError(`Please add your ${selectedModel === 'claude' ? 'Claude' : 'Google Gemini'} API key in Settings`)
-                setLoading(false)
-                return
-            }
-
             // Add user message to history
             const userMessage: ConversationMessage = {
                 role: 'user',
@@ -251,7 +200,7 @@ ${extractedFields.business_objective}`
 
             const updatedHistory = [...conversationHistory, userMessage]
 
-            // Call API with conversation history
+            // Call API with conversation history - uses server env vars for API keys
             const response = await fetch('/api/continue-conversation', {
                 method: 'POST',
                 headers: {
@@ -259,7 +208,6 @@ ${extractedFields.business_objective}`
                 },
                 body: JSON.stringify({
                     conversationHistory: updatedHistory,
-                    apiKey,
                     provider: selectedModel
                 })
             })

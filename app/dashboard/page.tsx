@@ -128,17 +128,6 @@ export default function DashboardPage() {
                             <div className={styles.step}>
                                 <div className={styles.stepNumber}>1</div>
                                 <div>
-                                    <h4>Set Up Your API Keys</h4>
-                                    <p>Add API keys for Claude, ChatGPT, or Gemini to execute prompts</p>
-                                    <Link href="/settings/api-keys" className={styles.stepLink}>
-                                        Configure API Keys →
-                                    </Link>
-                                </div>
-                            </div>
-
-                            <div className={styles.step}>
-                                <div className={styles.stepNumber}>2</div>
-                                <div>
                                     <h4>Create Your First Project</h4>
                                     <p>Use Quick Mode for natural language or Advanced Builder for detailed control</p>
                                     <Link href="/builder/quick" className={styles.stepLink}>
@@ -148,10 +137,18 @@ export default function DashboardPage() {
                             </div>
 
                             <div className={styles.step}>
+                                <div className={styles.stepNumber}>2</div>
+                                <div>
+                                    <h4>Execute with AI</h4>
+                                    <p>Run your prompts with Claude or Gemini - AI is already configured and ready</p>
+                                </div>
+                            </div>
+
+                            <div className={styles.step}>
                                 <div className={styles.stepNumber}>3</div>
                                 <div>
-                                    <h4>Execute & Track Performance</h4>
-                                    <p>Run your prompts against different LLMs and monitor their effectiveness</p>
+                                    <h4>Save & Track Performance</h4>
+                                    <p>Save prompts to your library and monitor their effectiveness</p>
                                 </div>
                             </div>
                         </div>
