@@ -218,7 +218,8 @@
 }
 
 /* Ensure select elements have pointer cursor */
-select.input {
+select.input,
+select.aiSuggested {
     cursor: pointer;
 }
 
